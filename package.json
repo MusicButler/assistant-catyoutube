@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/MusicButler/assistant-catyoutube/issues"
   },
-  "homepage": "https://github.com/MusicButler/assistant-catyoutube"
+  "homepage": "https://github.com/MusicButler/assistant-catyoutube",
+  "dependencies": {
+    "request": "^2.45.0"
+  }
 }

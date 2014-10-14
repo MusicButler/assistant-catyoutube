@@ -5,30 +5,45 @@ var request = require('request');
 var youtubeRegex = new RegExp("(?:http|https|)(?::\/\/|)(?:www.|)(?:youtu\\.be\/|youtube\\.com(?:\/embed\/|\/v\/|\/watch\\?v=|\/ytscreeningroom\\?v=|\/feeds\/api\/videos\/|\/user\\S*[^\\w\\-\\s]|\\S*[^\\w\-\\s]))([\\w\\-]{11})[a-z0-9;:@#?&%=+\/\$_.-]*", 'i');
 var youtubePrefix = "https://www.youtube.com/watch?v=";
 
-var http = require('http');
-var DelayedStream = require('delayed-stream');
+/*var http = require('http');
+var DelayedStream = require('delayed-stream');*/
 
 
-function youtubeParser (input, done) {
-    var parts = input.match(youtubeRegex);
+function youtubeParser (butler, song, done) {
+    var parts = song.url.match(youtubeRegex);
     if (parts) {
         var id = parts[1];
         var yUrl = youtubePrefix + id;
         var location = "./cache/";
         var filename = location + id + ".mp3";
-        if (fs.existsSync(filename)) {
-            return done(filename);
+        // Gets the video title from youtube if needed
+        if (!song.title) {
+            var req = request({
+                method: 'GET',
+                uri: "http://gdata.youtube.com/feeds/api/videos/" + id + "?v=2&alt=jsonc"
+            }, function (error, response, body) {
+                if (!error) {
+                    body = JSON.parse(body);
+                    song.album = song.album || "from Youtube";
+                    if (body.data.title)
+                        song.title = body.data.title;
+                }
+                if (fs.existsSync(filename)) {
+                    song.url = filename;
+                    return done(song);
+                }
+                butler.notify("message", {message: "Youtube song detected, processing..."});
+                var youtubeDl = spawn('youtube-dl', ["--extract-audio", "--audio-format", "mp3", yUrl, "-o", filename]);
+                youtubeDl.on('error', function (err) {
+                    console.log(err);
+                    return done(false);
+                });
+                youtubeDl.on("exit", function (code) {
+                    song.url = filename;
+                    return done(song);
+                });
+            });
         }
-        //butler.emit("youtubedl:startdownloading");
-        var youtubeDl = spawn('youtube-dl', ["--extract-audio", "--audio-format", "mp3", yUrl, "-o", filename]);
-        youtubeDl.on('error', function (err) {
-            console.log(err);
-            return done(false);
-        });
-        youtubeDl.on("exit", function (code) {
-            //butler.emit("youtubedl:downloaded");
-            return done(filename);
-        });
     } else {
         return done(false);
     }
@@ -64,8 +79,8 @@ function youtubeParser (input, done) {
     }
 }*/
 
-function test (input, done) {
-    return done(youtubeRegex.test(input));
+function test (song, done) {
+    return done(youtubeRegex.test(song.url));
 }
 
 module.exports = function (butler, done) {
@@ -87,7 +102,7 @@ module.exports = function (butler, done) {
     butler.parsers.push({
         order: 98,
         check: test,
-        func: youtubeParser,
+        func: youtubeParser.bind(null, butler),
         type: "Youtube"});
 
     done({name: "Youtube parser"});
