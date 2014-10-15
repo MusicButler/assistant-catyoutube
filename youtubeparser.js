@@ -27,6 +27,8 @@ function youtubeParser (butler, song, done) {
                     song.album = song.album || "from Youtube";
                     if (body.data.title)
                         song.title = body.data.title;
+                    if (body.data.thumbnail)
+                        song.cover = song.cover || body.data.thumbnail.hqDefault;
                 }
                 if (fs.existsSync(filename)) {
                     song.url = filename;
@@ -100,7 +102,7 @@ module.exports = function (butler, done) {
     });
 
     butler.parsers.push({
-        order: 98,
+        order: 80,
         check: test,
         func: youtubeParser.bind(null, butler),
         type: "Youtube"});
